@@ -40,12 +40,48 @@ assert_contains "csrf cookie is Secure" "Secure" "$hdrs"
 assert_contains "csrf cookie is HttpOnly" "HttpOnly" "$hdrs"
 assert_contains "cookie uses __Host- prefix" "__Host-next-auth.csrf-token" "$hdrs"
 
+# Optional end-to-end workflow. Needs an SMTP sink reachable by the deployment and readable here:
+#   MAILPIT_URL=https://mailpit.example MAILPIT_AUTH_FILE=/path/with/user:pass
+#   STATE_OUT=/path/state.json   -> write representative state (group, uneven expense, receipt)
+#   STATE_IN=/path/state.json    -> verify that state still exists (run after a redeploy)
 if [ -n "${MAILPIT_URL:-}" ]; then
-  section "real login and workflow through public domain"
-  JAR="$TEST_TMP/r.jar"
-  login "railway-smoke@example.invalid" "$JAR" && pass "magic-link login over public domain" || fail "login failed"
-  grp=$(trpc_mutation "$JAR" group.create '{"json":{"name":"Railway Smoke"}}')
-  printf '%s' "$grp" | jq -e '.result.data.json.id' >/dev/null && pass "group created" || fail "group create failed"
+  section "real login through the public domain"
+  JAR_A="$TEST_TMP/ra.jar"; JAR_B="$TEST_TMP/rb.jar"
+  login "railway-a@example.invalid" "$JAR_A" && pass "magic-link login (user A)" || die "login A failed"
+  login "railway-b@example.invalid" "$JAR_B" && pass "magic-link login (user B)" || die "login B failed"
+  A=$(session_user_id "$JAR_A"); B=$(session_user_id "$JAR_B")
+  assert_contains "session cookie is Secure" "Secure" "$(curl -s -D - -o /dev/null -b "$JAR_A" "$BASE_URL/api/auth/session")" || true
+  if [ -n "${STATE_OUT:-}" ]; then
+    section "write representative state"
+    grp=$(trpc_mutation "$JAR_A" group.create '{"json":{"name":"Railway Trip"}}')
+    G=$(printf '%s' "$grp" | jq -r '.result.data.json.id'); PUB=$(printf '%s' "$grp" | jq -r '.result.data.json.publicId')
+    [ -n "$G" ] && [ "$G" != "null" ] && pass "group created ($G)" || die "group create failed"
+    trpc_mutation "$JAR_B" group.joinGroup "{\"json\":{\"groupId\":\"$PUB\"}}" | jq -e '.result' >/dev/null && pass "user B joined" || fail "join failed"
+    png="$TEST_TMP/r.png"; make_test_png "$png"
+    key=$(upload_receipt "$JAR_A" "$png"); [ -n "$key" ] && pass "receipt uploaded ($key)" || die "upload failed"
+    trpc_mutation "$JAR_A" expense.addOrEditExpense "{\"json\":{\"paidBy\":$A,\"name\":\"Railway dinner\",\"category\":\"food\",\"amount\":\"3000\",\"groupId\":$G,\"splitType\":\"EXACT\",\"currency\":\"USD\",\"fileKey\":\"$key\",\"participants\":[{\"userId\":$A,\"amount\":\"2000\"},{\"userId\":$B,\"amount\":\"-2000\"}]},\"meta\":{\"values\":{\"amount\":[\"bigint\"],\"participants.0.amount\":[\"bigint\"],\"participants.1.amount\":[\"bigint\"]}}}" | jq -e '.result.data.json[0].id' >/dev/null && pass "uneven expense created" || die "expense failed"
+    bal=$(trpc_query "$JAR_A" expense.getBalances | jq -c --argjson b "$B" '[.result.data.json.balances[] | select(.friendId==$b) | .currencies]')
+    assert_contains "user B owes 20.00" '"2000"' "$bal"
+    curl -s -b "$JAR_A" -o "$TEST_TMP/r1.webp" "$BASE_URL/api/files/$key"
+    jq -n --arg g "$G" --arg key "$key" --arg bal "$bal" --arg sha "$(sha256sum "$TEST_TMP/r1.webp" | cut -d' ' -f1)" --arg a "$A" --arg b "$B" \
+      '{group:$g, key:$key, balance:$bal, sha:$sha, a:$a, b:$b}' > "$STATE_OUT"
+    pass "state written to $STATE_OUT"
+  fi
+  if [ -n "${STATE_IN:-}" ]; then
+    section "verify state after redeploy"
+    G=$(jq -r .group "$STATE_IN"); key=$(jq -r .key "$STATE_IN"); B0=$(jq -r .b "$STATE_IN")
+    assert_eq "same user id for A" "$(jq -r .a "$STATE_IN")" "$A"
+    assert_contains "group still present" '"Railway Trip"' "$(trpc_query "$JAR_A" group.getAllGroups)"
+    bal=$(trpc_query "$JAR_A" expense.getBalances | jq -c --argjson b "$B0" '[.result.data.json.balances[] | select(.friendId==$b) | .currencies]')
+    assert_eq "balances identical" "$(jq -r .balance "$STATE_IN")" "$bal"
+    curl -s -b "$JAR_A" -o "$TEST_TMP/r2.webp" "$BASE_URL/api/files/$key"
+    assert_eq "receipt bytes identical after redeploy" "$(jq -r .sha "$STATE_IN")" "$(sha256sum "$TEST_TMP/r2.webp" | cut -d' ' -f1)"
+    section "settle up"
+    A_ID=$A; B_ID=$B0
+    trpc_mutation "$JAR_B" expense.addOrEditExpense "{\"json\":{\"paidBy\":$B_ID,\"name\":\"Settle\",\"category\":\"settlement\",\"amount\":\"2000\",\"groupId\":$G,\"splitType\":\"SETTLEMENT\",\"currency\":\"USD\",\"participants\":[{\"userId\":$B_ID,\"amount\":\"2000\"},{\"userId\":$A_ID,\"amount\":\"-2000\"}]},\"meta\":{\"values\":{\"amount\":[\"bigint\"],\"participants.0.amount\":[\"bigint\"],\"participants.1.amount\":[\"bigint\"]}}}" | jq -e '.result.data.json[0].id' >/dev/null && pass "settlement recorded" || fail "settlement failed"
+    left=$(trpc_query "$JAR_A" expense.getBalances | jq -r --argjson b "$B0" '[.result.data.json.balances[] | select(.friendId==$b) | .currencies[] | select(.amount != "0")] | length')
+    assert_eq "balance settled to zero" "0" "$left"
+  fi
 fi
 
 summary
