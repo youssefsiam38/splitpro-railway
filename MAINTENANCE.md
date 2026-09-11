@@ -40,7 +40,8 @@ Record the digests, commit, and release date in `UPSTREAM.md` and `THIRD_PARTY_N
 9. Anonymous pull check: `DOCKER_CONFIG=$(mktemp -d) docker pull ghcr.io/youssefsiam38/splitpro-railway:A.B.C`.
 10. `gh release create vA.B.C --notes-file <notes>` listing upstream version, digests, architectures,
     migration notes, test evidence. No AI attribution anywhere.
-11. Update the Railway template's `splitpro` service image to the new immutable tag
+11. Railway's template generator and composer reject `@sha256` references; use the version tag.
+    Update the Railway template's `splitpro` service image to the new immutable tag
     (`ghcr.io/youssefsiam38/splitpro-railway:A.B.C`) in the template composer, save, and run the
     clean-room deploy (below) before considering the marketplace version changed.
 

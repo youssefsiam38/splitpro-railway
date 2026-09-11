@@ -8,8 +8,8 @@
                         ▼
 ┌───────────────────────────────────────────┐        ┌────────────────────────────────────┐
 │ service: splitpro                          │  IPv6  │ service: postgres                   │
-│ image: ghcr.io/youssefsiam38/splitpro-     │ private│ image: docker.io/ossapps/postgres   │
-│        railway:<version>@sha256:…          │ ─────▶ │        @sha256:… (PG 17.7 + pg_cron) │
+│ image: ghcr.io/youssefsiam38/splitpro-     │ private│ image: ossapps/postgres:17.7-trixie │
+│        railway:<version>                   │ ─────▶ │        (PG 17.7 + pg_cron)           │
 │ tini → entrypoint → node server.js (node)  │  5432  │ docker-entrypoint.sh postgres        │
 │ volume: /app/uploads (receipts)            │        │   -c shared_preload_libraries=pg_cron│
 │ public domain, healthcheck                 │        │ volume: /var/lib/postgresql/data     │
@@ -19,8 +19,8 @@
 
 | Service | Source | Public | Volume | Why |
 |---|---|---|---|---|
-| `splitpro` | this repository's wrapper image (GHCR, immutable tag + digest) | yes, Railway domain, port from `PORT` | `/app/uploads` | Upstream expects a single web process; receipts are stored on local disk. |
-| `postgres` | `ossapps/postgres` pinned by digest | no | `/var/lib/postgresql/data` (`PGDATA` set to a subdirectory) | SplitPro's migrations require `pg_cron`, which Railway's stock Postgres does not ship. Upstream builds and ships this image and uses it in its own production Compose file. |
+| `splitpro` | this repository's wrapper image (GHCR, version tag that is never moved; digest recorded per release) | yes, Railway domain, port from `PORT` | `/app/uploads` | Upstream expects a single web process; receipts are stored on local disk. |
+| `postgres` | `ossapps/postgres:17.7-trixie` (version tag; digest recorded in UPSTREAM.md — Railway's template generator rejects `@sha256` image references, verified 2026-09-11) | no | `/var/lib/postgresql/data` (`PGDATA` set to a subdirectory) | SplitPro's migrations require `pg_cron`, which Railway's stock Postgres does not ship. Upstream builds and ships this image and uses it in its own production Compose file. |
 
 Inter-service traffic uses Railway private networking (`postgres.railway.internal`), wired with a
 reference variable so the connection string is never duplicated:

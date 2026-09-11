@@ -7,7 +7,9 @@ phones. This repository is a **community-maintained Railway template** that depl
 PostgreSQL build it needs in one click. It is **not affiliated with OSS Apps**, the SplitPro authors.
 
 <!-- DEPLOY_BUTTON_START -->
-_Deploy button will appear here after the template is published._
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/splitpro)
+
+Template page: https://railway.com/deploy/splitpro
 <!-- DEPLOY_BUTTON_END -->
 
 ## What you get
@@ -15,7 +17,7 @@ _Deploy button will appear here after the template is published._
 | Service | Image (immutable) | Public | Volume |
 |---|---|---|---|
 | `splitpro` | `ghcr.io/youssefsiam38/splitpro-railway:<version>` wrapping `ossapps/splitpro:v2.1.5` | yes (Railway domain, HTTPS) | `/app/uploads` — receipt images |
-| `postgres` | `docker.io/ossapps/postgres:17.7-trixie` (PostgreSQL 17.7 + pg_cron), pinned by digest | no (private network only) | `/var/lib/postgresql/data` — database |
+| `postgres` | `docker.io/ossapps/postgres:17.7-trixie` (PostgreSQL 17.7 + pg_cron), version tag; digest in [UPSTREAM.md](UPSTREAM.md) | no (private network only) | `/var/lib/postgresql/data` — database |
 
 Included versions:
 
@@ -24,7 +26,7 @@ Included versions:
 | SplitPro | v2.1.5 (commit `7e6a401`) |
 | PostgreSQL | 17.7 with pg_cron 1.6 |
 | Node.js (in image) | 22.16.0 on Alpine 3.21 |
-| Wrapper | see [releases](https://github.com/youssefsiam38/splitpro-railway/releases) |
+| Wrapper | v1.0.1 — `ghcr.io/youssefsiam38/splitpro-railway:1.0.1`, index digest `sha256:b23bbb1c9f354895e3bbf98ea6817163e0002a974d567ccd3e682f939d65268a` ([releases](https://github.com/youssefsiam38/splitpro-railway/releases)) |
 
 Why a wrapper image and why not Railway's stock Postgres: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -162,8 +164,10 @@ start `splitpro`. Upstream notes: `docker/README.md` "Migrating instance".
 
 ## Upgrades
 
-- Each wrapper release pins one SplitPro version and one PostgreSQL image by digest. Tags are never
-  moved. Release notes list the upstream version and any migration notes.
+- Each wrapper release pins one SplitPro version by digest inside the image and one PostgreSQL image
+  tag. Wrapper tags are never moved. The Railway template references version tags rather than
+  `@sha256` digests because Railway's template generator rejects digest references; every digest is
+  recorded in [UPSTREAM.md](UPSTREAM.md) and the release notes. Release notes list the upstream version and any migration notes.
 - To upgrade an existing deployment, change the `splitpro` service image to the new
   `ghcr.io/youssefsiam38/splitpro-railway:<version>` tag. Migrations run automatically at startup.
   Take a database backup first.

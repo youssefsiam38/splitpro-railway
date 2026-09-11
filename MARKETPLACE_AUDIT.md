@@ -56,3 +56,4 @@ Splitwise-alternative template. Proceeding with SplitPro.
 | Timestamp (UTC) | Queries | Result |
 |---|---|---|
 | 2026-09-11T15:39:17Z | `splitpro`, `split-pro`, `splitwise`, `shared expenses`, `split expenses`, `expense sharing`, `bill splitting`, `group expenses`, `spliit`, `settle up` | No new matches. `split-pro` still returns only Plane and Stirling-PDF (word match on "split"). **Gap still clean.** |
+| 2026-09-11T16:12:58Z | same 9 queries as above | No new matches. **Gap still clean; published immediately after this check.** |

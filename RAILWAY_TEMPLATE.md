@@ -10,12 +10,12 @@ community-maintained template and is not affiliated with OSS Apps, the SplitPro 
 
 This template deploys two Railway services:
 
-- **splitpro** — the web app, from an immutable, digest-pinned image
-  (`ghcr.io/youssefsiam38/splitpro-railway`) that wraps the official `ossapps/splitpro:v2.1.5`
-  image. It adds a wait-for-database step, a readiness gate, and runs the app as a non-root user.
+- **splitpro** — the web app, from a version-specific tag of
+  `ghcr.io/youssefsiam38/splitpro-railway` (tags are never moved; each release records its digest)
+  that wraps the official `ossapps/splitpro:v2.1.5` image. It adds a wait-for-database step, a readiness gate, and runs the app as a non-root user.
   It gets the public HTTPS domain and a volume at `/app/uploads` for receipt images.
 - **postgres** — PostgreSQL 17.7 with the `pg_cron` extension (`ossapps/postgres:17.7-trixie`,
-  pinned by digest). SplitPro's schema requires pg_cron for recurring expenses, so Railway's stock
+  a version-specific tag whose digest is recorded in the repository). SplitPro's schema requires pg_cron for recurring expenses, so Railway's stock
   PostgreSQL cannot be used. It is private-network only and has its own volume.
 
 Secrets (`NEXTAUTH_SECRET`, `POSTGRES_PASSWORD`) are generated per deployment. `DATABASE_URL` and
@@ -30,7 +30,8 @@ have a few seconds of downtime on redeploy.
 - One click gives you the exact production shape upstream supports (app + pg_cron PostgreSQL),
   with generated secrets and private networking already configured.
 - No admin account to claim, no setup wizard: the first thing anyone sees is the sign-in page.
-- Immutable versions: the template pins SplitPro and PostgreSQL by digest; upgrades are explicit.
+- Pinned versions: the template references version-specific image tags (never `latest`), with
+  digests recorded in the repository; upgrades are explicit.
 
 ## Common Use Cases
 

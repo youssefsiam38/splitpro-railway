@@ -34,6 +34,16 @@ Facts below were checked against primary sources on 2026-09-11. Re-verify before
 | Database image source | `docker/postgres/Dockerfile` upstream (`FROM postgres:<major>.<minor>-<base>` + `apt-get install postgresql-<major>-cron`), built by `.github/workflows/postgres.yaml` |
 | Checksums | Upstream publishes no separate checksum files; the OCI digests above are the integrity anchor and were read from the registry with `docker buildx imagetools inspect`. |
 
+## Wrapper image releases
+
+| Wrapper tag | Index digest | Source commit |
+|---|---|---|
+| `ghcr.io/youssefsiam38/splitpro-railway:1.0.0` | `sha256:dfab9a215846271760eda27c02045a3bca9b4eb602cb0814f0cf6c05a71de7d3` | `5b4fe221cb5bb75297dac03c526493d77be7336f` |
+| `ghcr.io/youssefsiam38/splitpro-railway:1.0.1` | `sha256:b23bbb1c9f354895e3bbf98ea6817163e0002a974d567ccd3e682f939d65268a` | `0248f24005bdeb9d28ce95936386d32d6fe3b67c` |
+
+Railway's template generator rejects `@sha256` image references ("Invalid Docker image"), so the
+Railway template references version tags; digests above are the integrity record.
+
 ## Runtime facts (verified by running the pinned image)
 
 | Item | Value |
