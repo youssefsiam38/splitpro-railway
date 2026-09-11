@@ -53,4 +53,6 @@ Splitwise-alternative template. Proceeding with SplitPro.
 
 ## Re-audit before publication
 
-_To be filled in immediately before `railway templates publish`._
+| Timestamp (UTC) | Queries | Result |
+|---|---|---|
+| 2026-09-11T15:39:17Z | `splitpro`, `split-pro`, `splitwise`, `shared expenses`, `split expenses`, `expense sharing`, `bill splitting`, `group expenses`, `spliit`, `settle up` | No new matches. `split-pro` still returns only Plane and Stirling-PDF (word match on "split"). **Gap still clean.** |
