@@ -28,8 +28,10 @@ summary() {
 # assert_eq LABEL EXPECTED ACTUAL
 assert_eq() { if [ "$2" = "$3" ]; then pass "$1 ($3)"; else fail "$1: expected [$2] got [$3]"; fi; }
 # assert_contains LABEL NEEDLE HAYSTACK
-assert_contains() { if printf '%s' "$3" | grep -q -- "$2"; then pass "$1"; else fail "$1: missing [$2]"; fi; }
-assert_not_contains() { if printf '%s' "$3" | grep -q -- "$2"; then fail "$1: found forbidden [$2]"; else pass "$1"; fi; }
+# here-strings, not pipes: `grep -q` exits on the first match and a pipe writer would get SIGPIPE,
+# which `pipefail` reports as failure when the haystack is larger than the pipe buffer
+assert_contains() { if grep -q -- "$2" <<<"$3"; then pass "$1"; else fail "$1: missing [$2]"; fi; }
+assert_not_contains() { if grep -q -- "$2" <<<"$3"; then fail "$1: found forbidden [$2]"; else pass "$1"; fi; }
 
 http_code() { curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$@"; }
 

@@ -25,7 +25,7 @@ echo "cold_start_seconds=$cold" | tee "$METRICS"
 section "entrypoint behaviour"
 # the supervisor polls every 2 s, so its "ready" line can land slightly after the first 200
 for _ in $(seq 1 15); do
-  compose logs --no-color splitpro | grep -q "SplitPro is ready" && break
+  l=$(compose logs --no-color splitpro); grep -q "SplitPro is ready" <<<"$l" && break
   sleep 1
 done
 logs=$(compose logs --no-color splitpro)
@@ -125,7 +125,7 @@ compose stop postgres
 DB_WAIT_TIMEOUT=8 compose up -d --no-build --no-deps --force-recreate splitpro
 found=0
 for _ in $(seq 1 30); do
-  if compose logs --no-color splitpro 2>/dev/null | grep -q "did not accept connections within 8s"; then found=1; break; fi
+  l=$(compose logs --no-color splitpro 2>/dev/null); if grep -q "did not accept connections within 8s" <<<"$l"; then found=1; break; fi
   sleep 2
 done
 [ "$found" = 1 ] && pass "bounded DB wait failed with clear message" || fail "no DB wait timeout message"
