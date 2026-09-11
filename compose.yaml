@@ -1,0 +1,79 @@
+# Local test topology. Mirrors the Railway service graph:
+#   postgres  -> Railway "postgres" service (pg_cron enabled, own volume)
+#   splitpro  -> Railway "splitpro" service (public, own volume at /app/uploads)
+#   mailpit   -> LOCAL TEST ONLY. Stands in for the SMTP provider the deployer supplies.
+name: splitpro-railway-test
+
+services:
+  postgres:
+    image: ossapps/postgres@sha256:7b28a64dca6bc8a5a9df32b69f413939f93d1b87b169748f3754ef25eaa5b962
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: splitpro
+      POSTGRES_PASSWORD: local-test-only-password
+      POSTGRES_DB: splitpro
+      PGDATA: /var/lib/postgresql/data/pgdata
+    command:
+      - docker-entrypoint.sh
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_cron
+      - -c
+      - cron.database_name=splitpro
+      - -c
+      - cron.timezone=UTC
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U splitpro -d splitpro']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: '1'
+      MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+    ports:
+      - '127.0.0.1:8025:8025'
+
+  splitpro:
+    # Built from this repository. CI and the Railway template use the published GHCR image instead.
+    build:
+      context: .
+      args:
+        WRAPPER_VERSION: ${WRAPPER_VERSION:-0.0.0-local}
+        VCS_REF: ${VCS_REF:-local}
+    image: ${SPLITPRO_RAILWAY_IMAGE:-splitpro-railway:local}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      DB_WAIT_TIMEOUT: ${DB_WAIT_TIMEOUT:-180}
+      APP_READY_TIMEOUT: ${APP_READY_TIMEOUT:-300}
+      DATABASE_URL: postgresql://splitpro:local-test-only-password@postgres:5432/splitpro
+      NEXTAUTH_SECRET: local-test-only-secret-not-for-production-use
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_URL_INTERNAL: http://localhost:3000
+      DEFAULT_HOMEPAGE: /balances
+      ENABLE_SENDING_INVITES: 'true'
+      DISABLE_EMAIL_SIGNUP: 'false'
+      FROM_EMAIL: splitpro@example.invalid
+      EMAIL_SERVER_HOST: mailpit
+      EMAIL_SERVER_PORT: '1025'
+      EMAIL_SERVER_USER: test
+      EMAIL_SERVER_PASSWORD: test
+      EMAIL_TLS_REJECT_UNAUTHORIZED: '0'
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  pgdata:
+  uploads:
