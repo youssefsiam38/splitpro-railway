@@ -23,6 +23,11 @@ cold=$(( $(date +%s) - t0 ))
 echo "cold_start_seconds=$cold" | tee "$METRICS"
 
 section "entrypoint behaviour"
+# the supervisor polls every 2 s, so its "ready" line can land slightly after the first 200
+for _ in $(seq 1 15); do
+  compose logs --no-color splitpro | grep -q "SplitPro is ready" && break
+  sleep 1
+done
 logs=$(compose logs --no-color splitpro)
 assert_contains "waited for database" "PostgreSQL is accepting connections" "$logs"
 assert_contains "fixed volume ownership" "fixing ownership of /app/uploads" "$logs"
