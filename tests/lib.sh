@@ -5,6 +5,11 @@
 
 : "${BASE_URL:=http://localhost:3000}"
 : "${MAILPIT_URL:=http://localhost:8025}"
+# Optional basic-auth for a protected Mailpit (user:pass). Read from MAILPIT_AUTH_FILE when set so the
+# value never appears on a command line or in logs.
+if [ -n "${MAILPIT_AUTH_FILE:-}" ]; then MAILPIT_AUTH=$(cat "$MAILPIT_AUTH_FILE"); fi
+: "${MAILPIT_AUTH:=}"
+mp() { if [ -n "$MAILPIT_AUTH" ]; then curl -s -u "$MAILPIT_AUTH" "$@"; else curl -s "$@"; fi; }
 : "${TEST_TIMEOUT:=300}"
 
 TEST_TMP="${TEST_TMP:-$(mktemp -d)}"
@@ -54,16 +59,16 @@ login() {
     --data-urlencode "csrfToken=$csrf" --data-urlencode "email=$email" \
     --data-urlencode "callbackUrl=$BASE_URL/balances" --data-urlencode "json=true"
   for _ in $(seq 1 30); do
-    id=$(curl -s "$MAILPIT_URL/api/v1/search?query=to:$email" | jq -r '.messages[0].ID // empty')
+    id=$(mp "$MAILPIT_URL/api/v1/search?query=to:$email" | jq -r '.messages[0].ID // empty')
     [ -n "$id" ] && break
     sleep 1
   done
   [ -n "$id" ] || { echo "no sign-in mail for $email" >&2; return 1; }
-  link=$(curl -s "$MAILPIT_URL/api/v1/message/$id" | jq -r '.Text' | tr -d '\r' \
+  link=$(mp "$MAILPIT_URL/api/v1/message/$id" | jq -r '.Text' | tr -d '\r' \
     | grep -oE "$BASE_URL/api/auth/callback/email[^[:space:]]+" | head -1)
   [ -n "$link" ] || { echo "no callback link in mail" >&2; return 1; }
   curl -s -c "$jar" -b "$jar" -o /dev/null "$link"
-  curl -s "$MAILPIT_URL/api/v1/messages" -X DELETE -H 'Content-Type: application/json' -d "{\"IDs\":[\"$id\"]}" >/dev/null || true
+  mp "$MAILPIT_URL/api/v1/messages" -X DELETE -H 'Content-Type: application/json' -d "{\"IDs\":[\"$id\"]}" >/dev/null || true
   curl -s -b "$jar" -c "$jar" "$BASE_URL/api/auth/session" | jq -e '.user.id' >/dev/null
 }
 

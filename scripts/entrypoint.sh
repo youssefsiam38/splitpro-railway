@@ -39,7 +39,8 @@ done
 [ -z "$missing" ] || fail "missing required variable(s):$missing"
 
 case "$NEXTAUTH_URL" in
-  http://*|https://*) ;;
+  http://?*|https://?*) ;;
+  http://|https://) fail "NEXTAUTH_URL has no host (is the service's public domain created yet? On Railway it should be https://\${{RAILWAY_PUBLIC_DOMAIN}})" ;;
   *) fail "NEXTAUTH_URL must start with http:// or https:// (got a value with a different scheme)" ;;
 esac
 

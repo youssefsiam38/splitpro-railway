@@ -151,6 +151,14 @@ else
 fi
 assert_contains "clear provider message" "no authentication provider configured" "$(cat "$TEST_TMP/noprov.log")"
 assert_not_contains "password not leaked in failure output" "$LOCAL_DB_PASSWORD" "$(cat "$TEST_TMP/noprov.log")"
+if docker run --rm --network "$net" \
+  -e DATABASE_URL="postgresql://splitpro:${LOCAL_DB_PASSWORD}@postgres:5432/splitpro" -e NEXTAUTH_SECRET=x -e NEXTAUTH_URL=https:// -e EMAIL_SERVER_HOST=mailpit \
+  "$img" >"$TEST_TMP/nohost.log" 2>&1; then
+  fail "container should have exited non-zero for host-less NEXTAUTH_URL"
+else
+  pass "exits non-zero when NEXTAUTH_URL has no host"
+fi
+assert_contains "clear NEXTAUTH_URL message" "NEXTAUTH_URL has no host" "$(cat "$TEST_TMP/nohost.log")"
 compose start splitpro
 wait_for_code "$BASE_URL/api/auth/providers" 200 180 >/dev/null || die "did not come back after provider test"
 
